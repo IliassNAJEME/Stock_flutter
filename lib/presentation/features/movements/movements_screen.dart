@@ -91,7 +91,7 @@ class _MovementDialog extends ConsumerStatefulWidget {
 
 class _MovementDialogState extends ConsumerState<_MovementDialog> {
   final _quantityController = TextEditingController(text: '1');
-  Product? _selectedProduct;
+  String? _selectedProductId;
   bool _isSubmitting = false;
 
   @override
@@ -101,7 +101,13 @@ class _MovementDialogState extends ConsumerState<_MovementDialog> {
   }
 
   Future<void> _submit() async {
-    if (_selectedProduct == null) {
+    final products = await ref.read(productsProvider.future);
+    final selectedProduct = products.cast<Product?>().firstWhere(
+          (product) => product?.id == _selectedProductId,
+          orElse: () => null,
+        );
+
+    if (selectedProduct == null) {
       return;
     }
 
@@ -111,7 +117,7 @@ class _MovementDialogState extends ConsumerState<_MovementDialog> {
 
     try {
       await ref.read(inventoryControllerProvider).addMovement(
-            product: _selectedProduct!,
+            product: selectedProduct,
             quantity: int.parse(_quantityController.text),
             type: widget.type,
           );
@@ -146,23 +152,39 @@ class _MovementDialogState extends ConsumerState<_MovementDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             products.when(
-              data: (items) => DropdownButtonFormField<Product>(
-                initialValue: _selectedProduct,
-                decoration: const InputDecoration(labelText: 'Produit'),
-                items: items
-                    .map(
-                      (product) => DropdownMenuItem(
-                        value: product,
-                        child: Text('${product.name} (${product.stockQuantity})'),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedProduct = value;
+              data: (items) {
+                final hasSelectedProduct = items.any(
+                  (product) => product.id == _selectedProductId,
+                );
+                if (!hasSelectedProduct && _selectedProductId != null) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) {
+                      return;
+                    }
+                    setState(() {
+                      _selectedProductId = null;
+                    });
                   });
-                },
-              ),
+                }
+
+                return DropdownButtonFormField<String>(
+                  initialValue: hasSelectedProduct ? _selectedProductId : null,
+                  decoration: const InputDecoration(labelText: 'Produit'),
+                  items: items
+                      .map(
+                        (product) => DropdownMenuItem(
+                          value: product.id,
+                          child: Text('${product.name} (${product.stockQuantity})'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedProductId = value;
+                    });
+                  },
+                );
+              },
               error: (error, stackTrace) => Text(error.toString()),
               loading: () => const LinearProgressIndicator(),
             ),
