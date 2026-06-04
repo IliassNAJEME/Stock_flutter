@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
+
+import '../../firebase_options.dart';
 
 class FirebaseInitializationResult {
   const FirebaseInitializationResult({
@@ -13,7 +16,14 @@ class FirebaseInitializationResult {
 class FirebaseBootstrap {
   static Future<FirebaseInitializationResult> initialize() async {
     try {
-      await Firebase.initializeApp();
+      if (kIsWeb) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } else {
+        await Firebase.initializeApp();
+      }
+
       return const FirebaseInitializationResult(
         isReady: true,
         message: 'Firebase initialise avec succes.',
