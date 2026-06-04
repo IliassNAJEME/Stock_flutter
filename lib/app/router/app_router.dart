@@ -17,6 +17,20 @@ import '../../presentation/providers/auth_providers.dart';
 
 final appRouterProvider =
     Provider.family<GoRouter, FirebaseInitializationResult>((ref, initResult) {
+  if (!initResult.isReady) {
+    return GoRouter(
+      initialLocation: '/setup',
+      routes: [
+        GoRoute(
+          path: '/setup',
+          builder: (context, state) => FirebaseSetupScreen(
+            message: initResult.message,
+          ),
+        ),
+      ],
+    );
+  }
+
   final authRefresh = AuthRefreshListenable(ref.watch(firebaseAuthProvider));
   ref.onDispose(authRefresh.dispose);
 
@@ -24,10 +38,6 @@ final appRouterProvider =
     initialLocation: '/dashboard',
     refreshListenable: authRefresh,
     redirect: (context, state) {
-      if (!initResult.isReady) {
-        return state.matchedLocation == '/setup' ? null : '/setup';
-      }
-
       final isAuthenticated = ref.read(firebaseAuthProvider).currentUser != null;
       final isOnAuthPage = state.matchedLocation == '/login';
 
